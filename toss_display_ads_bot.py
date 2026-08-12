@@ -43,7 +43,7 @@ TARGET_SHEET = "수기매체업로드"
 CAMPAIGN_LABEL = "토스Pioneer Club"
 MEDIA = "DA"
 REPORT_URL = "https://ads-platform.toss.im/reports/3606"
-SLACK_WEBHOOK_URL = "https://hooks.slack.com/triggers/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"
+SLACK_WEBHOOK_URL = "https://hooks.slack.com/triggers/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"
 
 
 def send_slack(text: str) -> None:
@@ -82,12 +82,13 @@ result = {{"ok": False}}
 
 if not toss_tab:
     new_tab(REPORT_URL)
-    time.sleep(4)
 else:
     switch_tab(toss_tab["targetId"])
     goto_url(REPORT_URL)
-    wait_for_load(timeout=15)
-    time.sleep(2)
+
+wait_for_load(timeout=20)
+wait_for_element(".pcb4-1d9fzqx8", timeout=20)
+time.sleep(1)
 
 # 날짜 범위 트리거 클릭 (react-calendar 기반 팝업 열기)
 trigger_rect = js("""
@@ -98,6 +99,10 @@ return [Math.round(r.x + r.width/2), Math.round(r.y + r.height/2)];
 """)
 if not trigger_rect:
     result["error"] = "date range trigger not found"
+    try:
+        capture_screenshot(r"{here}\\_toss_display_ads_error.png")
+    except Exception:
+        pass
 else:
     click_at_xy(trigger_rect[0], trigger_rect[1])
     time.sleep(1)
@@ -127,6 +132,10 @@ else:
 
     if not tile_center:
         result["error"] = "target day tile not found after month navigation attempts"
+        try:
+            capture_screenshot(r"{here}\\_toss_display_ads_error.png")
+        except Exception:
+            pass
     else:
         click_at_xy(tile_center[0], tile_center[1])
         time.sleep(0.3)
@@ -192,6 +201,7 @@ def _run_browser_step(target_day: int) -> dict:
         day=target_day,
         result_path=str(_SCRAPE_RESULT).replace("\\", "\\\\"),
         report_url=REPORT_URL,
+        here=str(_HERE).replace("\\", "\\\\"),
     )
     _SCRAPE_SCRIPT.write_text(code, encoding="utf-8")
 
