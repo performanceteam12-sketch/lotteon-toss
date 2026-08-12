@@ -75,10 +75,10 @@ TARGET_DAY = {day}   # 1~31 (int)
 RESULT_PATH = r"{result_path}"
 REPORT_URL = "{report_url}"
 
+result = {{"ok": False}}
+
 tabs = list_tabs(include_chrome=False)
 toss_tab = next((t for t in tabs if "ads-platform.toss.im" in t["url"]), None)
-
-result = {{"ok": False}}
 
 if not toss_tab:
     new_tab(REPORT_URL)
@@ -90,14 +90,37 @@ wait_for_load(timeout=20)
 wait_for_element(".pcb4-1d9fzqx8", timeout=20)
 time.sleep(1)
 
-# 날짜 범위 트리거 클릭 (react-calendar 기반 팝업 열기)
-trigger_rect = js("""
-const el = document.querySelector('.pcb4-1d9fzqx8');
-if (!el) return null;
-const r = el.getBoundingClientRect();
-return [Math.round(r.x + r.width/2), Math.round(r.y + r.height/2)];
-""")
-if not trigger_rect:
+# goto_url이 가끔 리포트 페이지가 아니라 계정 홈으로 튕기는 경우가 있어,
+# 실제로 리포트 페이지에 도착했는지 확인하고 아니면 재시도한다.
+for _ in range(3):
+    current_url = js("return location.href")
+    if "/reports/" in current_url:
+        break
+    goto_url(REPORT_URL)
+    wait_for_load(timeout=20)
+    wait_for_element(".pcb4-1d9fzqx8", timeout=20)
+    time.sleep(1)
+else:
+    result["error"] = "리포트 페이지 도착 실패 (계정 홈으로 반복 리다이렉트됨): " + js("return location.href")
+    try:
+        capture_screenshot(r"{here}\\_toss_display_ads_error.png")
+    except Exception:
+        pass
+
+if "error" in result:
+    trigger_rect = None
+else:
+    # 날짜 범위 트리거 클릭 (react-calendar 기반 팝업 열기)
+    trigger_rect = js("""
+    const el = document.querySelector('.pcb4-1d9fzqx8');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return [Math.round(r.x + r.width/2), Math.round(r.y + r.height/2)];
+    """)
+
+if "error" in result:
+    pass
+elif not trigger_rect:
     result["error"] = "date range trigger not found"
     try:
         capture_screenshot(r"{here}\\_toss_display_ads_error.png")
